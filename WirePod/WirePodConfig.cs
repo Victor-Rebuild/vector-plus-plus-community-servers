@@ -1,10 +1,14 @@
 using System;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Net.Sockets;
+using System.Threading.Tasks;
 using Android.App;
 using Android.Content;
+using chewie.Services;
 using core.Services;
+using Xamarin.Android.Net;
 
 namespace WirePod
 {
@@ -40,7 +44,7 @@ namespace WirePod
 		{
 			get
 			{
-				return "http://" + WirePodConfig.Server;
+				return "https://" + WirePodConfig.Server;
 			}
 		}
 
@@ -61,13 +65,77 @@ namespace WirePod
 
 		/// <summary>
 		/// Replaces the string.Concat that built "https://session-certs.token.global.anki-services.com/vic/" + esn.
-		/// wire-pod serves the certificate it captured while pairing at /session-certs/{esn}.
+		/// So that we can get the robot name for the session cert
 		/// </summary>
-		public static string SessionCertUrl(string ankiCertAddress, string esn)
+		public static string SessionCertUrl(string ankiCertAddress, string esn, RobotCommunicationConnectionModule module)
 		{
-			string text = WirePodConfig.WebBaseUrl + "/session-certs/" + (esn ?? string.Empty).Trim().ToLowerInvariant();
-			DAS.Event("WirePod.WirePodConfig.SessionCertUrl", text);
-			return text;
+			string text = (esn ?? string.Empty).Trim().ToLowerInvariant();
+			string text2 = null;
+			try
+			{
+				if (module != null)
+				{
+					text2 = WirePodConfig.CleanRobotName(module.LastConnectedRobotName);
+					if (string.IsNullOrEmpty(text2))
+					{
+						text2 = WirePodConfig.CleanRobotName(module.LastSelectedRobotName);
+					}
+				}
+			}
+			catch (Exception ex)
+			{
+				DAS.Warn("WirePod.WirePodConfig.SessionCertUrl", "couldn't read robot name: " + ex.Message);
+			}
+			string text3 = WirePodConfig.WebBaseUrl + "/v1/session_cert/" + (string.IsNullOrEmpty(text2) ? text : (text2 + "_" + text));
+			DAS.Event("WirePod.WirePodConfig.SessionCertUrl", text3);
+			return text3;
+		}
+
+		/// <summary>
+		/// Make the cert download work
+		/// </summary>
+		public static Task<string> FetchCert(object appHttpService, string url)
+		{
+			return Task.Run<string>(delegate
+			{
+				try
+				{
+					using (HttpClient httpClient = new HttpClient(new AndroidClientHandler()))
+					{
+						httpClient.Timeout = TimeSpan.FromSeconds(15.0);
+						string result = httpClient.GetStringAsync(url).Result;
+						DAS.Event("WirePod.WirePodConfig.FetchCert", string.Format("{0}: {1} bytes", url, result.Length));
+						return result;
+					}
+				}
+				catch (AggregateException ex)
+				{
+					Exception ex2 = ex.InnerException ?? ex;
+					DAS.Warn("WirePod.WirePodConfig.FetchCert", url + ": " + ex2.Message);
+					throw ex2;
+				}
+			});
+		}
+
+		private static string CleanRobotName(string name)
+		{
+			if (string.IsNullOrWhiteSpace(name))
+			{
+				return null;
+			}
+			string text = string.Empty;
+			foreach (char c in name.Trim())
+			{
+				if (char.IsLetterOrDigit(c) || c == '-')
+				{
+					text += c;
+				}
+				else if (c == ' ')
+				{
+					text += '-';
+				}
+			}
+			return (text.Length == 0) ? null : text;
 		}
 
 		/// <summary>
@@ -93,7 +161,7 @@ namespace WirePod
 			string text = input.Trim();
 			if (!text.Contains("://"))
 			{
-				text = "http://" + text;
+				text = "https://" + text;
 			}
 			Uri uri;
 			if (!Uri.TryCreate(text, UriKind.Absolute, out uri) || string.IsNullOrEmpty(uri.Host))
@@ -171,9 +239,9 @@ namespace WirePod
 			}
 		}
 
-		public const string kDefaultHost = "escapepod.local";
+		public const string kDefaultHost = "vicapi.pvic.xyz";
 
-		public const int kDefaultWebPort = 8080;
+		public const int kDefaultWebPort = 443;
 
 		private const string kOtaUrl = "http://archive.org/download/Anki-proto-prod-Vector-firmware/prod/2.0.1.6086ep.ota";
 

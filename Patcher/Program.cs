@@ -93,8 +93,11 @@ namespace Patcher
 			TypeDef httpService = Program.FindType(wirePod, "WirePod.WirePodHttpService");
 			TypeDef config = Program.FindType(wirePod, "WirePod.WirePodConfig");
 			IMethod wrap = importer.Import(Program.FindMethod(httpService, "Wrap"));
-			IMethod sessionCertUrl = importer.Import(Program.FindMethod(config, "SessionCertUrl"));
+			Program.FindMethod(config, "SessionCertUrl");
+			TypeDef connectionModule = Program.FindType(chewie, "chewie.Services.RobotCommunicationConnectionModule");
+			IMethod sessionCertUrl = new MemberRefUser(chewie, "SessionCertUrl", MethodSig.CreateStatic(chewie.CorLibTypes.String, chewie.CorLibTypes.String, chewie.CorLibTypes.String, new ClassSig(connectionModule)), importer.Import(config));
 			IMethod otaUrl = importer.Import(Program.FindMethod(config, "OtaUrl"));
+			IMethod fetchCert = importer.Import(Program.FindMethod(config, "FetchCert"));
 
 			// 1-3. Route the Anki account, email-subscription and location services through WirePodHttpService.
 			foreach (string typeName in new string[]
@@ -133,7 +136,21 @@ namespace Patcher
 					}
 					Instruction instruction = instructions2.Skip(i + 1).Take(8).FirstOrDefault((Instruction x) => x.OpCode == OpCodes.Call && x.Operand is IMethod && ((IMethod)x.Operand).FullName == "System.String System.String::Concat(System.String,System.String)");
 					Program.Expect(instruction != null, "no string.Concat after the session-certs URL in " + methodDef.FullName);
+					Instruction thisLoad = instructions2[i + 1];
+					Instruction thisField = instructions2[i + 2];
+					Instruction statusField = instructions2[i + 3];
+					Program.Expect(thisLoad.OpCode == OpCodes.Ldloc_1, "unexpected IL after the session-certs URL in " + methodDef.FullName + " (expected ldloc.1)");
+					Program.Expect(thisField.OpCode == OpCodes.Ldfld && thisField.Operand is IField && ((IField)thisField.Operand).Name == "<>4__this", "unexpected IL after the session-certs URL in " + methodDef.FullName + " (expected ldfld <>4__this)");
+					Program.Expect(statusField.OpCode == OpCodes.Ldfld && statusField.Operand is IField && ((IField)statusField.Operand).Name == "_RobotStatusResponse", "unexpected IL after the session-certs URL in " + methodDef.FullName + " (expected ldfld _RobotStatusResponse)");
+					Program.Expect(!instructions2.Any((Instruction x) => x.Operand == instruction), "the string.Concat in " + methodDef.FullName + " is a branch target");
+					int concatIndex = instructions2.IndexOf(instruction);
+					instructions2.Insert(concatIndex, new Instruction(thisLoad.OpCode, thisLoad.Operand));
+					instructions2.Insert(concatIndex + 1, new Instruction(thisField.OpCode, thisField.Operand));
 					instruction.Operand = sessionCertUrl;
+					Instruction download = instructions2.Skip(instructions2.IndexOf(instruction) + 1).Take(80).FirstOrDefault((Instruction x) => x.OpCode == OpCodes.Callvirt && x.Operand is IMethod && ((IMethod)x.Operand).Name == "GetStringAsync" && ((IMethod)x.Operand).DeclaringType != null && ((IMethod)x.Operand).DeclaringType.FullName == "core.Services.Http.HttpService");
+					Program.Expect(download != null, "no HttpService.GetStringAsync after the session-certs URL in " + methodDef.FullName);
+					download.OpCode = OpCodes.Call;
+					download.Operand = fetchCert;
 					num++;
 					Console.WriteLine("Patched session cert URL in " + methodDef.FullName);
 				}
