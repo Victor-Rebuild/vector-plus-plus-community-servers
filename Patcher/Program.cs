@@ -157,17 +157,6 @@ namespace Patcher
 			}
 			Program.Expect(num == 1, string.Format("expected 1 session-certs URL, patched {0}", num));
 
-			// 6. RobotCommunicationService.Initialize: hand the service to RobotSetup, which listens for robots that
-			//    can't reach their server and asks wire-pod to set them up over SSH.
-			//    The reference is built by hand: its parameter type is chewie's own RobotCommunicationService, and the
-			//    importer would otherwise write that as a reference into WirePod, which the runtime can't load.
-			TypeDef robotCommunicationService = Program.FindType(chewie, "chewie.Services.RobotCommunicationService");
-			Program.FindMethod(Program.FindType(wirePod, "WirePod.RobotSetup"), "Attach");
-			MemberRef attach = new MemberRefUser(chewie, "Attach", MethodSig.CreateStatic(chewie.CorLibTypes.Void, new ClassSig(robotCommunicationService)), importer.Import(Program.FindType(wirePod, "WirePod.RobotSetup")));
-			MethodDef initialize = Program.FindMethod(robotCommunicationService, "Initialize");
-			Program.CallWithThisBeforeReturn(initialize, attach);
-			Console.WriteLine("Patched " + initialize.FullName);
-
 			// 7. Turn off analytics (DAS). Its uploads go to Anki's suspended AWS account and fail; failed files are
 			//    retried forever and every failure is logged into a new file to upload. The resulting flood of threads
 			//    makes the app's old Mono runtime deadlock against Android's thread list lock (seen on Android 15).

@@ -141,8 +141,6 @@ the key is rejected, it's forgotten and you'll be asked for it again.
 | `WirePodHttpService.cs` | Wraps the app's HTTP service; Anki-cloud requests go to `AnkiCloudEmulator`, everything else passes through |
 | `AnkiCloudEmulator.cs` | Local answers for the Anki accounts API, location search (echoes your text) and anything else Anki |
 | `LocalHttpResponse.cs` | The response object the emulator returns |
-| `RobotSetup.cs` | Detects robots that can't reach their server and runs wire-pod's SSH setup |
-| `SshKeyStore.cs` | File picker for the SSH key; keeps it in the app's private storage |
 | `Ui.cs` | Shared dialog helpers |
 
 Patches to `chewie.Droid.dll` (applied by `Patcher/` with dnlib):
@@ -154,7 +152,6 @@ Patches to `chewie.Droid.dll` (applied by `Patcher/` with dnlib):
 | `LocationAutoCompletionService.Configure` | same |
 | `RobotCommunicationService.OtaUrl` (getter) | returns `WirePodConfig.OtaUrl(...)` |
 | `RobotCommunicationConnectionModule` (auto-connect) | the cert URL's `string.Concat` → `WirePodConfig.SessionCertUrl(...)` |
-| `RobotCommunicationService.Initialize` | ends with `RobotSetup.Attach(this)` |
 
 `ChewieResources.dll`: in the embedded `DASConfig.json`, `ShouldSyncNetwork` is set to `false` and
 `LogLevels` to `[]`.

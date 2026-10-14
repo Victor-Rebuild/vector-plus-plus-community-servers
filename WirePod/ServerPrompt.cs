@@ -51,8 +51,8 @@ namespace WirePod
 				frameLayout.SetPadding(num, num / 2, num, 0);
 				frameLayout.AddView(input);
 				Android.Support.V7.App.AlertDialog.Builder builder = new Android.Support.V7.App.AlertDialog.Builder(activity);
-				builder.SetTitle("wire-pod server");
-				builder.SetMessage(error ?? "Enter the IP address of the computer running wire-pod. Add :port if its web page isn't on port 8080.");
+				builder.SetTitle("Which server?");
+				builder.SetMessage(error ?? "Enter the web address of the VC server's accounts API. Add :port if its port isn't on port 443.");
 				builder.SetView(frameLayout);
 				builder.SetCancelable(false);
 				builder.SetPositiveButton("Connect", delegate(object sender, DialogClickEventArgs e)
@@ -79,7 +79,7 @@ namespace WirePod
 			string server;
 			if (!WirePodConfig.TryNormalizeServer(input, out server))
 			{
-				ServerPrompt.Ask(input, "\"" + input + "\" isn't a valid address. Enter an IP address like 192.168.1.20 or a hostname.", onDone);
+				ServerPrompt.Ask(input, "\"" + input + "\" isn't a valid address. Enter an address like vicapi.pvic.xyz or anki2.ca:7070.", onDone);
 				return;
 			}
 			Task.Run(delegate
@@ -87,7 +87,7 @@ namespace WirePod
 				string text = ServerPrompt.Probe(server);
 				if (text != null)
 				{
-					ServerPrompt.Ask(server, string.Format("Couldn't reach wire-pod at {0} ({1}). Check that wire-pod is running and the phone is on the same network.", server, text), onDone);
+					ServerPrompt.Ask(server, string.Format("Couldn't reach the accounts API at {0} ({1}). Check that the server is up and you've typed the address correctly.", server, text), onDone);
 					return;
 				}
 				WirePodConfig.SaveServer(server, WirePodConfig.ResolveIPv4(WirePodConfig.GetHost(server)));
@@ -100,7 +100,7 @@ namespace WirePod
 			string server;
 			if (!WirePodConfig.TryNormalizeServer(input, out server))
 			{
-				ServerPrompt.Ask(input, "\"" + input + "\" isn't a valid address. Enter an IP address like 192.168.1.20 or a hostname.", onDone);
+				ServerPrompt.Ask(input, "\"" + input + "\" isn't a valid address. Enter an address like vicapi.pvic.xyz or anki2.ca:7070.", onDone);
 				return;
 			}
 			Task.Run(delegate
@@ -119,7 +119,7 @@ namespace WirePod
 				using (HttpClient httpClient = new HttpClient(new AndroidClientHandler()))
 				{
 					httpClient.Timeout = TimeSpan.FromSeconds(6.0);
-					using (HttpResponseMessage result = httpClient.SendAsync(new HttpRequestMessage(HttpMethod.Get, "http://" + server + "/api/get_version_info")).Result)
+					using (HttpResponseMessage result = httpClient.SendAsync(new HttpRequestMessage(HttpMethod.Get, "https://" + server + "/v1")).Result)
 					{
 						// Any HTTP answer means the web server is there; older wire-pods return 404 for this path.
 						DAS.Event("WirePod.ServerPrompt.Probe", string.Format("{0} -> {1}", server, (int)result.StatusCode));
