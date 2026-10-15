@@ -98,9 +98,6 @@ $apktool = Join-Path $Tools "apktool.jar"
 Invoke-Native java @("-jar", $apktool, "d", "-f", "-o", (Join-Path $res "src"), $Apk)
 Copy-Item (Join-Path $PSScriptRoot "android\res\drawable\*.xml") (Join-Path $res "src\res\drawable")
 $manifest = Join-Path $res "src\AndroidManifest.xml"
-$activities = "ExtrasActivity", "WeatherActivity", "KnowledgeActivity", "TalkActivity", "DriveActivity", "SshActivity", "EyeColorActivity" | ForEach-Object {
-	"        <activity android:name=`"com.wirepod.extras.$_`" android:theme=`"@android:style/Theme.Material.NoActionBar`" android:screenOrientation=`"$(if ($_ -eq "DriveActivity" -or $_ -eq "SshActivity") { "sensorLandscape" } else { "portrait" })`"/>" }
-(Get-Content -Raw $manifest).Replace("</application>", (($activities -join "`n") + "`n    </application>")) | Set-Content -NoNewline -Encoding utf8 $manifest
 # Target Android 15 (API 35) so newer Android stops warning that the app is for an old Android version. That needs:
 #  - android:exported on components with intent filters (Android 12);
 #  - the Android 12 Bluetooth permissions (requested at runtime by WirePod.Permissions);
@@ -166,11 +163,6 @@ $replaced += "@$resOut"
 # After the rebuilt res/ so the fixed fonts win.
 $replaced += Get-ChildItem (Join-Path $fonts "*.otf") | ForEach-Object { "res/font/$($_.Name)=$($_.FullName)" }
 $replaced += "classes3.dex=$(Join-Path $java 'dex\classes.dex')"
-if (Test-Path $SshKey) {
-	Write-Host "   Bundling SSH key $SshKey (keep this APK private)"
-	$replaced += "assets/wirepod/ssh_root_key=$((Resolve-Path $SshKey).Path)"
-}
-else { Write-Host "   No SSH key at $SshKey; setup will ask for the key file instead" }
 Invoke-Native dotnet (@($patcher, "pack", $Apk, $unsigned) + $replaced)
 
 if (-not (Test-Path $Keystore)) {
