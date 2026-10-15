@@ -48,15 +48,6 @@ namespace WirePod
 			}
 		}
 
-		/// <summary>The "Extra features" switch (set by the Java ExtrasActivity, same preferences).</summary>
-		public static bool ExtrasEnabled
-		{
-			get
-			{
-				return WirePodConfig.Prefs.GetString("extras_enabled", "0") == "1";
-			}
-		}
-
 		public static void SaveServer(string server, string resolvedIp)
 		{
 			WirePodConfig.Prefs.Edit().PutString(WirePodConfig.kServerKey, server).PutString(WirePodConfig.kServerIpKey, resolvedIp).Apply();
@@ -243,7 +234,7 @@ namespace WirePod
 
 		public const int kDefaultWebPort = 443;
 
-		private const string kOtaUrl = "http://archive.org/download/Anki-proto-prod-Vector-firmware/prod/2.0.1.6086ep.ota";
+		private const string kOtaUrl = "http://ota.pvic.xyz/vic/latest/dev.ota";
 
 		private const string kPrefsName = "wirepod";
 
