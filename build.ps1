@@ -15,7 +15,7 @@
 #>
 param(
 	[string]$Apk = (Join-Path $PSScriptRoot "VECTOR.apk"),
-	[string]$Out = (Join-Path $PSScriptRoot "VECTOR-wirepod.apk"),
+	[string]$Out = (Join-Path $PSScriptRoot "Vector-app-community-servers.apk"),
 	[string]$DnlibPath = "",
 	# Bundled into the APK so first-time setup can configure the robot without asking. Never commit it or share the APK.
 	[string]$SshKey = (Join-Path $PSScriptRoot "ssh_root_key"),
@@ -84,7 +84,8 @@ Invoke-Native dotnet @($patcher, "fonts", $Apk, $fonts)
 
 Write-Host "== Compiling the extra screens (Java) into classes3.dex"
 $java = Join-Path $build "java"
-$cp = @("android-4.1.1.4.jar", "json-20080701.jar", "jsch-0.2.20.jar") | ForEach-Object { Join-Path $Tools $_ }
+# The Android 15 API (it includes org.json) so screens can use newer APIs such as PackageInstaller.
+$cp = @("android-35\android.jar", "json-20080701.jar", "jsch-0.2.20.jar") | ForEach-Object { Join-Path $Tools $_ }
 Invoke-Native javac (@("--release", "8", "-nowarn", "-encoding", "UTF-8", "-cp", ($cp -join ";"), "-d", (Join-Path $java "cls")) +
 	(Get-ChildItem -Recurse (Join-Path $PSScriptRoot "android\src") -Filter *.java | ForEach-Object { $_.FullName }))
 New-Item -ItemType Directory -Force (Join-Path $java "dex") | Out-Null
